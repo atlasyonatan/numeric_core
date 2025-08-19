@@ -1,4 +1,4 @@
-use crate::partition::ContiguousPartitionExt;
+use crate::partition::partitions_map;
 
 pub fn numeric_core(number: u32, radix: u32) -> Option<u32> {
     let digits = get_digits(number, radix);
@@ -6,24 +6,10 @@ pub fn numeric_core(number: u32, radix: u32) -> Option<u32> {
         return Some(number);
     }
 
-    let mut min: Option<u32> = None;
-    for partition in digits.contiguous_partitions(4).unwrap() {
-        let numbers: [u32; 4] = partition
-            .into_iter()
-            .map(|p| to_number(&p, radix).unwrap())
-            .collect::<Vec<_>>()
-            .as_slice()
-            .try_into()
-            .unwrap();
-
-        if let Some(result) = numeric_core_sequence(&numbers) {
-            if let Some(value) = numeric_core(result, radix) {
-                min = min.map(|current| current.min(value)).or(Some(value));
-            }
-        }
-    }
-
-    return min;
+    partitions_map(&digits, |p| to_number(&p, radix).unwrap())
+        .filter_map(|partition| numeric_core_sequence(&partition))
+        .filter_map(|new_number| numeric_core(new_number, radix))
+        .min()
 }
 
 fn to_number(digits: &[char], radix: u32) -> Option<u32> {
@@ -71,7 +57,7 @@ fn operate(op: Operation, rhs: f32, lhs: f32) -> f32 {
 }
 
 pub fn numeric_core_sequence(sequence: &[u32; 4]) -> Option<u32> {
-    numeric_core_(
+    numeric_core_recursive(
         &sequence[1..].try_into().unwrap(),
         [
             Operation::Subtraction,
@@ -83,7 +69,7 @@ pub fn numeric_core_sequence(sequence: &[u32; 4]) -> Option<u32> {
     )
 }
 
-fn numeric_core_<const N: usize>(
+fn numeric_core_recursive<const N: usize>(
     numbers: &[u32; N],
     mut operations: [Operation; N],
     depth: usize,
@@ -108,7 +94,7 @@ fn numeric_core_<const N: usize>(
         let new_val = operate(op, current_val, next_number);
 
         // Recurse deeper
-        let result = numeric_core_(numbers, operations, depth + 1, new_val);
+        let result = numeric_core_recursive(numbers, operations, depth + 1, new_val);
 
         if let Some(value) = result {
             min = min.map(|current| current.min(value)).or(Some(value));
@@ -119,4 +105,21 @@ fn numeric_core_<const N: usize>(
     }
 
     return min;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+
+    #[rstest]
+    #[case(1, 10, Some(1))]
+    #[case(12, 10, Some(12))]
+    #[case(123, 10, Some(123))]
+    #[case(1213, 10, None)]
+    #[case(86455, 10, Some(18))]
+    #[case(1111111, 10, Some(0))]
+    fn test_numeric_core(#[case] number: u32, #[case] radix: u32, #[case] expected: Option<u32>) {
+        assert_eq!(numeric_core(number, radix), expected);
+    }
 }

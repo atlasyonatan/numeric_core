@@ -3,6 +3,8 @@ use partition::ContiguousPartitionExt;
 use roman_numerals::roman_to_u32;
 use std::{collections::HashSet, env};
 
+use crate::{partition::partitions_map, roman_numerals::u32_to_roman};
+
 mod numeric_core;
 mod partition;
 mod roman_numerals;
@@ -26,27 +28,73 @@ fn main() {
 
     if is_roman {
         let chars: Vec<char> = value_arg.chars().collect();
-        let value = numeric_core_roman(&chars, |numbers| all_distinct(numbers)).unwrap();
+        let value = coat_of_arms(&chars).unwrap();
         println!("{}", value);
         return;
-    }
-
-    let n: u32 = value_arg.parse().expect("Argument must be a valid u32");
-
-    let result = numeric_core(n, 10);
-
-    if let Some(value) = result {
-        println!("{}", value);
     } else {
-        println!("No numeric core");
+        let n: u32 = value_arg.parse().expect("Argument must be a valid u32");
+
+        let result = numeric_core(n, 10);
+
+        if let Some(value) = result {
+            println!("{}", value);
+        } else {
+            println!("No numeric core");
+        }
     }
 }
 
-fn numeric_core_roman(digits: &[char], predicate: impl Fn(&[u32]) -> bool) -> Result<u32, String> {
-    roman_to_u32(&digits)?;
+fn coat_of_arms(digits: &[char]) -> Result<u32, String> {
+    let n = roman_to_u32(&digits)?;
 
     if digits.len() < 4 {
-        return Err("Not enough roman numerals".to_string());
+        return Ok(n);
+    }
+
+    let mut i: usize = 0;
+    partitions_map(digits, |p| roman_to_u32(p).unwrap())
+        .filter(|numbers| all_distinct(numbers))
+        .inspect(|p| {
+            i += 1;
+            println!("\n{}:\nitems={:?}", i, p)
+        })
+        .filter_map(|numbers| numeric_core_sequence(&numbers))
+        .inspect(|&new_number| {
+            println!(
+                "new_number={:?}={:?}",
+                new_number,
+                u32_to_roman(new_number).iter().collect::<String>()
+            )
+        })
+        .filter_map(|new_number| numeric_core(new_number, 10))
+        .inspect(|numeric_core| println!("numeric_core={:?}", numeric_core))
+        .min()
+        .ok_or_else(|| "No numeric core".to_string())
+}
+
+fn coat_of_arms_v2(digits: &[char]) -> Result<u32, String> {
+    roman_to_u32(&digits)?;
+    let mut i: usize = 0;
+    partitions_map(digits, |p| roman_to_u32(p).unwrap())
+        .filter(|numbers| all_distinct(numbers))
+        .inspect(|p| {
+            i += 1;
+            println!("\n{}:\nitems={:?}", i, p)
+        })
+        .filter_map(|numbers| numeric_core_sequence(&numbers))
+        .inspect(|&new_number| println!("new_number={:?}", new_number,))
+        .map(|new_number| u32_to_roman(new_number))
+        .inspect(|chars| println!("roman={:?}", chars.iter().collect::<String>()))
+        .filter_map(|chars| coat_of_arms_v2(&chars).ok())
+        .inspect(|numeric_core| println!("numeric_core={:?}", numeric_core))
+        .min()
+        .ok_or_else(|| "No numeric core".to_string())
+}
+
+/*
+fn numeric_core_roman(digits: &[char]) -> Option<u32> {
+    if digits.len() < 4 {
+        return Some(roman_to_u32(digits).unwrap());
     }
 
     let mut min: Option<u32> = None;
@@ -59,26 +107,23 @@ fn numeric_core_roman(digits: &[char], predicate: impl Fn(&[u32]) -> bool) -> Re
             .try_into()
             .unwrap();
 
-        if !predicate(&numbers) {
-            continue;
-        }
-
         print!("{:?}", numbers);
 
         if let Some(result) = numeric_core_sequence(&numbers) {
-            if let Some(value) = numeric_core(result, 10) {
+            let new_roman_numeral = u32_to_roman(result);
+            print!("new_roman_numeral: {:?}", new_roman_numeral);
+            if let Some(value) = numeric_core_roman(&new_roman_numeral) {
                 print!(" = {}", value);
                 min = min.map(|current| current.min(value)).or(Some(value));
-            } else {
-                print!(" no numeric core");
             }
         }
 
         println!();
     }
 
-    return min.ok_or_else(|| "No numeric core".to_string());
+    return min;
 }
+ */
 
 fn all_distinct<T: Eq + std::hash::Hash>(slice: impl IntoIterator<Item = T>) -> bool {
     let mut seen = HashSet::new();

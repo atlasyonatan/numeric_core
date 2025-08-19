@@ -13,6 +13,23 @@ lazy_static! {
         m.insert('M', 1000);
         m
     };
+
+    // Precomputed descending mapping for encoding
+    static ref ROMAN_ENCODING: Vec<(u32, &'static str)> = vec![
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    ];
 }
 pub fn roman_to_u32(roman: &[char]) -> Result<u32, String> {
     if roman.is_empty() {
@@ -45,8 +62,21 @@ pub fn roman_to_u32(roman: &[char]) -> Result<u32, String> {
 
     Ok(total)
 }
+
+pub fn u32_to_roman(mut num: u32) -> Vec<char> {
+    let mut result = Vec::new();
+
+    for &(value, symbol) in ROMAN_ENCODING.iter() {
+        while num >= value {
+            num -= value;
+            result.extend(symbol.chars());
+        }
+    }
+
+    result
+}
 #[cfg(test)]
-mod tests {
+mod roman_to_u32_tests {
     use super::*;
 
     #[test]
@@ -77,5 +107,32 @@ mod tests {
         // Empty input
         let empty: [char; 0] = [];
         assert!(roman_to_u32(&empty).is_err());
+    }
+}
+
+#[cfg(test)]
+mod u8_to_roman_tests {
+    use super::*;
+
+    #[test]
+    fn test_basic() {
+        assert_eq!(u32_to_roman(1), vec!['I']);
+        assert_eq!(u32_to_roman(4), vec!['I', 'V']);
+        assert_eq!(u32_to_roman(9), vec!['I', 'X']);
+    }
+
+    #[test]
+    fn test_compound() {
+        assert_eq!(u32_to_roman(13), vec!['X', 'I', 'I', 'I']);
+        assert_eq!(u32_to_roman(40), vec!['X', 'L']);
+        assert_eq!(u32_to_roman(58), vec!['L', 'V', 'I', 'I', 'I']);
+    }
+
+    #[test]
+    fn test_larger() {
+        assert_eq!(u32_to_roman(90), vec!['X', 'C']);
+        assert_eq!(u32_to_roman(99), vec!['X', 'C', 'I', 'X']);
+        assert_eq!(u32_to_roman(255), vec!['C', 'C', 'L', 'V']);
+        assert_eq!(u32_to_roman(2024), vec!['M', 'M', 'X', 'X', 'I', 'V']);
     }
 }

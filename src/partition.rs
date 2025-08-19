@@ -1,3 +1,13 @@
+pub fn partitions_map<'a, T, V: Copy, const N: usize>(
+    items: &'a [T],
+    map: impl Fn(&[T]) -> V + Copy + 'a,
+) -> impl Iterator<Item = [V; N]> + 'a {
+    items
+        .contiguous_partitions(N)
+        .unwrap()
+        .map(move |partition| std::array::from_fn(|i| map(partition[i])))
+}
+
 pub trait ContiguousPartitionExt {
     type Item;
 
