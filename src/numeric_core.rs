@@ -117,6 +117,7 @@ mod tests {
     #[case(12, 10, Some(12))]
     #[case(123, 10, Some(123))]
     #[case(1213, 10, None)]
+    #[case(3614, 10, Some(14))]
     #[case(86455, 10, Some(18))]
     #[case(1111111, 10, Some(0))]
     fn test_numeric_core(#[case] number: u32, #[case] radix: u32, #[case] expected: Option<u32>) {

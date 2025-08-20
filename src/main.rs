@@ -28,8 +28,9 @@ fn main() {
 
     if is_roman {
         let chars: Vec<char> = value_arg.chars().collect();
-        let value = coat_of_arms(&chars).unwrap();
-        println!("{}", value);
+        for x in coat_of_arms_v3(&chars).unwrap() {
+            println!("{:?}", x);
+        }
         return;
     } else {
         let n: u32 = value_arg.parse().expect("Argument must be a valid u32");
@@ -89,6 +90,32 @@ fn coat_of_arms_v2(digits: &[char]) -> Result<u32, String> {
         .inspect(|numeric_core| println!("numeric_core={:?}", numeric_core))
         .min()
         .ok_or_else(|| "No numeric core".to_string())
+}
+
+fn coat_of_arms_v3(digits: &[char]) -> Result<Vec<(String, Option<u32>)>, String> {
+    let n = roman_to_u32(&digits)?;
+
+    if digits.len() < 4 {
+        return Ok(vec![(digits.iter().collect(), Some(n))]);
+    }
+
+    let mut v = Vec::new();
+
+    for partition in partitions_map(digits, |p| roman_to_u32(p).unwrap()) {
+        if !all_distinct(partition) {
+            continue;
+        }
+
+        let result =
+            numeric_core_sequence(&partition).and_then(|new_number| numeric_core(new_number, 10));
+
+        let s = partition
+            .map(|x| u32_to_roman(x).iter().collect::<String>())
+            .join(",");
+
+        v.push((s, result));
+    }
+    Ok(v)
 }
 
 /*
